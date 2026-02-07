@@ -1,0 +1,201 @@
+### =========================
+### Health Check
+### =========================
+GET http://localhost:5000
+
+
+
+### =========================
+### USERS
+### =========================
+
+### Create / Login User
+POST http://localhost:5000/api/users
+Content-Type: application/json
+
+{
+  "name": "Bala",
+  "phone": "9876583410",
+  "email": "bala@gmail.com",
+  "address_text": "Chennai"
+}
+
+###
+
+### Get All Users
+GET http://localhost:5000/api/users
+
+
+
+### =========================
+### PRODUCTS
+### =========================
+
+### Create Product (WITH IMAGE)
+POST http://localhost:5000/api/products
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="name"
+
+Premium Batter
+--boundary
+Content-Disposition: form-data; name="price"
+
+60
+--boundary
+Content-Disposition: form-data; name="weight"
+
+500g
+--boundary
+Content-Disposition: form-data; name="image"; filename="premium-batter.jpg"
+Content-Type: image/jpeg
+
+< ./idly-batter.jpg
+--boundary--
+
+
+###
+
+### Get All Products
+GET http://localhost:5000/api/products
+
+
+
+### =========================
+### STOCK
+### =========================
+
+### Add / Update Stock (Admin)
+POST http://localhost:5000/api/stock
+Content-Type: application/json
+
+{
+  "product_id": "6981f6d10e315ef28c91cbcb",
+  "available_quantity": 100,
+  "date": "2026-02-02"
+}
+
+###
+
+### Get All Stock
+GET http://localhost:5000/api/stock
+
+###
+
+### Get Stock by Date
+GET http://localhost:5000/api/stock?date=2026-02-02
+
+###
+
+### Get Stock by Product
+GET http://localhost:5000/api/stock?product_id=697f7c7db2df7d300aefd2a2
+
+###=========================
+### DELIVERY ZONES
+###=========================
+
+###Create Delivery Zone (ADMIN)
+POST http://localhost:5000/api/zones
+Content-Type: application/json
+
+{
+  "name": "Anna Nagar",
+  "pincode": "600040"
+}
+
+### Get All Delivery Zones
+GET http://localhost:5000/api/zones
+
+
+###=========================
+###DELIVERY SLOTS (MASTER)
+###=========================
+
+###Create Morning Slot (RUN ONCE)
+POST http://localhost:5000/api/slots
+Content-Type: application/json
+
+{
+  "name": "Morning",
+  "start_time": "07:00",
+  "end_time": "10:00"
+}
+
+###Create Evening Slot (RUN ONCE)
+POST http://localhost:5000/api/slots
+Content-Type: application/json
+
+{
+  "name": "Afternoon",
+  "start_time": "12:00",
+  "end_time": "15:00"
+}
+
+### Get All Delivery Slots
+GET http://localhost:5000/api/slots
+
+###=========================
+### SLOT AVAILABILITY
+###=========================
+
+###Create Slot Availability (ADMIN)
+POST http://localhost:5000/api/slot-availability
+Content-Type: application/json
+
+{
+  "zone_id": "6981f74e0e315ef28c91cbdc",
+  "slot_id": "6981fa5c44c00eaeecfb50f0",
+  "date": "2026-02-02",
+  "max_orders": 20,
+  "available_orders": 20
+}
+
+### Get Available Slots for Zone + Date (APP)
+GET http://localhost:5000/api/slot-availability?zone_id=6981f74e0e315ef28c91cbdc&date=2026-02-02
+
+
+### =========================
+### ORDERS
+### =========================
+
+### Create Order
+POST http://localhost:5000/api/orders
+Content-Type: application/json
+
+{
+  "user_id": "6981f6a60e315ef28c91cbc4",
+  "zone_id": "6981f74e0e315ef28c91cbdc",
+  "slot_availability_id": "6981fca0bf1f68ba2aeaba29",
+  "delivery_date": "2026-02-02",
+  "delivery_slot": "Afternoon",
+  "address_text": "Anna Nagar",
+  "payment_method": "COD",
+  "items": [
+    {
+      "product_id": "6981f6d10e315ef28c91cbcb",
+      "quantity": 2
+    }
+  ]
+}
+
+###
+
+### Get All Orders
+GET http://localhost:5000/api/orders
+
+###
+
+### Get Orders by User
+GET http://localhost:5000/api/orders?user_id=697f8203371944b6134da668
+
+### Update Order Status (ADMIN)
+PUT http://localhost:5000/api/orders/ORDER_ID/status
+Content-Type: application/json
+
+{
+  "status": "CONFIRMED"
+}
+
+###Check Next-Day Slot Auto Reset
+GET http://localhost:5000/api/slot-availability?zone_id=ZONE_ID&date=2026-02-03
