@@ -4,7 +4,7 @@ const slotAvailabilitySchema = new mongoose.Schema(
   {
     zone_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Zone",
+      ref: "DeliveryZone",
       required: true
     },
     slot_id: {

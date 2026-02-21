@@ -1,23 +1,22 @@
 const cron = require("node-cron");
-const Slot = require("../models/DeliverySlot");
+const SlotAvailability = require("../models/SlotAvailability");
 
 const startSlotResetCron = () => {
   // Runs every day at 12:00 AM
   cron.schedule("0 0 * * *", async () => {
     try {
-      console.log("⏰ Slot reset cron started");
+      console.log("⏰ Slot availability reset cron started");
 
-      await Slot.updateMany(
+      // Reset available_orders to max_orders for all existing slot availabilities
+      // This assumes max_orders represents the daily capacity
+      const result = await SlotAvailability.updateMany(
         {},
-        {
-          $set: {
-            booked_orders: 0,
-            is_active: true
-          }
-        }
+        [
+          { $set: { available_orders: "$max_orders" } }
+        ]
       );
 
-      console.log("✅ Delivery slots reset successfully");
+      console.log(`✅ Slot availability reset successfully for ${result.modifiedCount} records`);
     } catch (error) {
       console.error("❌ Slot reset cron failed:", error);
     }

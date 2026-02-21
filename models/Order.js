@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+
 /**
  * Order Items (Snapshot of product at order time)
  */
@@ -90,8 +91,22 @@ const OrderSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["PLACED", "CONFIRMED", "DELIVERED", "CANCELLED"],
+      enum: [
+        "PLACED",
+        "CONFIRMED",
+        "ASSIGNED",
+        "OUT_FOR_DELIVERY",
+        "DELIVERED",
+        "CANCELLED"
+      ],
       default: "PLACED",
+      index: true
+    },
+
+    delivery_partner_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DeliveryPartner",
+      default: null,
       index: true
     }
   },

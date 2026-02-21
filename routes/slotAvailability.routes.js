@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const SlotAvailability = require("../models/slotAvailability");
+const SlotAvailability = require("../models/SlotAvailability");
 
 // CREATE / UPDATE availability
 router.post("/", async (req, res) => {
