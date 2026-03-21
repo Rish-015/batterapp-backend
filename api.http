@@ -277,8 +277,18 @@ GET http://localhost:5000/api/delivery-partners
 
 ###
 
+### Get Active + Available Partners in Zone
+GET http://localhost:5000/api/delivery-partners?active=true&available=true&zone_id=6981f74e0e315ef28c91cbdc
+
+###
+
 ### Get Partners by Zone
 GET http://localhost:5000/api/delivery-partners/zone/6981f74e0e315ef28c91cbdc
+
+###
+
+### Get Partner by ID
+GET http://localhost:5000/api/delivery-partners/6999c873a0e39e16eacf7e0d
 
 ###
 
@@ -300,5 +310,20 @@ Content-Type: application/json
   "name": "Rajesh Kumar",
   "phone": "9876543211"
 }
+
+###
+
+### Update Partner Active Status
+PUT http://localhost:5000/api/delivery-partners/6999c873a0e39e16eacf7e0d/active
+Content-Type: application/json
+
+{
+  "is_active": false
+}
+
+###
+
+### Deactivate Partner (Soft Delete)
+DELETE http://localhost:5000/api/delivery-partners/6999c873a0e39e16eacf7e0d
 
 ###
