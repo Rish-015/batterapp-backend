@@ -37,7 +37,21 @@ app.use("/api/delivery-partners", require("./routes/deliveryPartner.routes"));
    HEALTH CHECK
 ======================= */
 app.get("/", (req, res) => {
-  res.send("✅ Batter Delivery API is running");
+   res.status(200).json({
+      success: true,
+      message: "Batter Delivery API is running",
+      timestamp: new Date().toISOString(),
+      endpoints: {
+         users: "/api/users",
+         products: "/api/products",
+         stock: "/api/stock",
+         orders: "/api/orders",
+         slots: "/api/slots",
+         slotAvailability: "/api/slot-availability",
+         zones: "/api/zones",
+         deliveryPartners: "/api/delivery-partners"
+      }
+   });
 });
 
 /* =======================
