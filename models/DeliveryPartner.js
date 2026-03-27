@@ -4,17 +4,20 @@ const DeliveryPartnerSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
     phone: {
       type: String,
       required: true,
-      unique: true
+      unique: true,
+      trim: true
     },
 
     vehicle_number: {
-      type: String
+      type: String,
+      trim: true
     },
 
     zone_id: {

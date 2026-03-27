@@ -20,6 +20,8 @@ const startSlotResetCron = () => {
     } catch (error) {
       console.error("❌ Slot reset cron failed:", error);
     }
+  }, {
+    timezone: process.env.CRON_TIMEZONE || "Asia/Kolkata"
   });
 };
 
