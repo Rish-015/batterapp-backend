@@ -8,22 +8,22 @@ const startSlotResetCron = require("./cron/slotResetCron");
 const app = express();
 
 /* =======================
-   DATABASE CONNECTION
-======================= */
-connectDB()
-  .then(() => {
-    startSlotResetCron();
-  });
-
-/* =======================
-   MIDDLEWARE
+   MIDDLEWARE (MUST BE FIRST)
 ======================= */
 app.use(cors());
 app.use(express.json());
 
 /* =======================
+   DATABASE CONNECTION
+======================= */
+connectDB().then(() => {
+  startSlotResetCron();
+});
+
+/* =======================
    ROUTES
 ======================= */
+app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/users", require("./routes/user.routes"));
 app.use("/api/products", require("./routes/product.routes"));
 app.use("/api/stock", require("./routes/stock.routes"));
@@ -55,7 +55,7 @@ app.get("/", (req, res) => {
 });
 
 /* =======================
-   ERROR HANDLING (BASIC)
+   ERROR HANDLING
 ======================= */
 app.use((err, req, res, next) => {
   console.error(err.stack);

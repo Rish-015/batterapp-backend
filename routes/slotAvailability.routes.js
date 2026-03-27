@@ -1,49 +1,58 @@
 const express = require("express");
-const router = express.Router();
 const SlotAvailability = require("../models/SlotAvailability");
 
-// CREATE / UPDATE availability
+const router = express.Router();
+
+function normalizeDate(date) {
+  return new Date(date).toISOString().split("T")[0];
+}
+
+/**
+ * POST /api/slot-availability
+ */
 router.post("/", async (req, res) => {
   try {
-    const {
-      zone_id,
-      slot_id,
-      date,
-      max_orders,
-      available_orders
-    } = req.body;
+    const { zone_id, slot_id, date, max_orders, available_orders } = req.body;
 
-    if (!zone_id || !slot_id || !date) {
+    if (!zone_id || !slot_id || !date || max_orders == null || available_orders == null) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Upsert: one slot per date
-    const availability = await SlotAvailability.findOneAndUpdate(
-      { zone_id, slot_id, date },
-      { max_orders, available_orders },
-      { new: true, upsert: true }
-    );
+    const record = await SlotAvailability.create({
+      zone_id,
+      slot_id,
+      date: normalizeDate(date),
+      max_orders,
+      available_orders
+    });
 
-    res.status(201).json(availability);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(201).json(record);
+  } catch {
+    res.status(500).json({ error: "Failed to create slot availability" });
   }
 });
 
-// GET availability by zone and date
+/**
+ * GET /api/slot-availability
+ */
 router.get("/", async (req, res) => {
   try {
-    const { zone_id, date } = req.query;
-    if (!zone_id || !date) {
-      return res.status(400).json({ error: "zone_id and date are required" });
+    const zoneValue = req.query.zoneId || req.query.zone_id;
+    const { date } = req.query;
+
+    if (!zoneValue || !date) {
+      return res.status(400).json({ error: "zoneId and date are required" });
     }
 
-    const availability = await SlotAvailability.find({ zone_id, date });
-    res.json(availability);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
+    const slots = await SlotAvailability.find({
+      zone_id: zoneValue,
+      date: normalizeDate(date),
+      available_orders: { $gt: 0 }
+    }).populate("slot_id");
+
+    res.json(slots);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch slots" });
   }
 });
 

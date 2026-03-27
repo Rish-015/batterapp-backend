@@ -1,161 +1,100 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const User = require("../models/User");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
+router.get("/test", (req, res) => {
+  res.send("USER ROUTES WORKING");
+});
+
 
 /**
- * ---------------------------------------
- * CREATE / LOGIN USER (PHONE BASED)
- * ---------------------------------------
- * POST /api/users
+ * =======================================
+ * GET LOGGED-IN USER PROFILE
+ * =======================================
+ * GET /api/users/me
  */
-router.post("/", async (req, res) => {
+router.get("/me", auth, async (req, res) => {
   try {
-    const { name, phone, email, address_text } = req.body;
-
-    if (!phone) {
-      return res.status(400).json({ error: "Phone number is required" });
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
     }
-
-    let user = await User.findOne({ phone });
-
-    // Existing user → login
-    if (user) {
-      return res.json(user);
-    }
-
-    // New user → create
-    if (!name || !address_text) {
-      return res.status(400).json({ error: "Name and address are required" });
-    }
-
-    user = await User.create({
-      name,
-      phone,
-      email,
-      addresses: [
-        {
-          address_text,
-          is_default: true
-        }
-      ]
-    });
-
-    res.status(201).json(user);
-
+    res.json(user);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Failed to fetch profile" });
   }
 });
 
 /**
- * ---------------------------------------
- * GET ALL USERS (ADMIN)
- * ---------------------------------------
- * GET /api/users
- */
-router.get("/", async (req, res) => {
-  try {
-    const users = await User.find().sort({ createdAt: -1 });
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch users" });
-  }
-});
-
-/**
- * ---------------------------------------
- * GET USER BY ID
- * ---------------------------------------
- * GET /api/users/:id
- */
-router.get("/:id", async (req, res) => {
-  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-    return res.status(400).json({ error: "Invalid user ID" });
-  }
-
-  const user = await User.findById(req.params.id);
-  if (!user) {
-    return res.status(404).json({ error: "User not found" });
-  }
-
-  res.json(user);
-});
-
-/**
- * ---------------------------------------
+ * =======================================
  * UPDATE USER PROFILE
- * ---------------------------------------
- * PUT /api/users/:id
+ * =======================================
+ * PUT /api/users/me
  */
-router.put("/:id", async (req, res) => {
+router.put("/me", auth, async (req, res) => {
   try {
     const { name, email } = req.body;
 
     const updated = await User.findByIdAndUpdate(
-      req.params.id,
+      req.user.userId,
       { name, email },
       { new: true, runValidators: true }
     );
 
-    if (!updated) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
     res.json(updated);
-
   } catch (err) {
     res.status(400).json({ error: "Invalid update data" });
   }
 });
 
 /**
- * ---------------------------------------
+ * =======================================
  * ADD NEW ADDRESS
- * ---------------------------------------
- * POST /api/users/:id/address
+ * =======================================
+ * POST /api/users/me/address
  */
-router.post("/:id/address", async (req, res) => {
+router.post("/me/address", auth, async (req, res) => {
   try {
-    const { address_text, is_default } = req.body;
+    const { address_text, landmark, lat, lng, is_default } = req.body;
 
     if (!address_text) {
-      return res.status(400).json({ error: "Address text is required" });
+      return res.status(400).json({ error: "Address is required" });
     }
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // If new address is default → unset others
     if (is_default) {
       user.addresses.forEach(a => (a.is_default = false));
     }
 
     user.addresses.push({
       address_text,
+      landmark,
+      lat,
+      lng,
       is_default: !!is_default
     });
 
     await user.save();
     res.json(user);
-
   } catch (err) {
     res.status(500).json({ error: "Failed to add address" });
   }
 });
 
 /**
- * ---------------------------------------
+ * =======================================
  * SET DEFAULT ADDRESS
- * ---------------------------------------
- * PATCH /api/users/:id/address/:addressId/default
+ * =======================================
+ * PATCH /api/users/me/address/:addressId/default
  */
-router.patch("/:id/address/:addressId/default", async (req, res) => {
+router.patch("/me/address/:addressId/default", auth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -166,21 +105,20 @@ router.patch("/:id/address/:addressId/default", async (req, res) => {
 
     await user.save();
     res.json(user);
-
   } catch (err) {
     res.status(500).json({ error: "Failed to update default address" });
   }
 });
 
 /**
- * ---------------------------------------
+ * =======================================
  * DELETE ADDRESS
- * ---------------------------------------
- * DELETE /api/users/:id/address/:addressId
+ * =======================================
+ * DELETE /api/users/me/address/:addressId
  */
-router.delete("/:id/address/:addressId", async (req, res) => {
+router.delete("/me/address/:addressId", auth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -189,14 +127,12 @@ router.delete("/:id/address/:addressId", async (req, res) => {
       addr => addr._id.toString() !== req.params.addressId
     );
 
-    // Ensure at least one default address
     if (!user.addresses.some(a => a.is_default) && user.addresses.length) {
       user.addresses[0].is_default = true;
     }
 
     await user.save();
     res.json(user);
-
   } catch (err) {
     res.status(500).json({ error: "Failed to delete address" });
   }

@@ -2,11 +2,14 @@ const mongoose = require("mongoose");
 
 const addressSchema = new mongoose.Schema({
   address_text: { type: String, required: true },
+  landmark: { type: String },
+  lat: { type: Number },
+  lng: { type: Number },
   is_default: { type: Boolean, default: false }
 });
 
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  name: { type: String },
   phone: { type: String, required: true, unique: true },
   email: { type: String },
   addresses: [addressSchema]
