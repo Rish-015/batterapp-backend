@@ -1,5 +1,6 @@
 const express = require("express");
 const SlotAvailability = require("../models/SlotAvailability");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -8,31 +9,60 @@ function normalizeDate(date) {
 }
 
 /**
- * POST /api/slot-availability
+ * ADMIN: GET ALL SLOT AVAILABILITY FOR A DATE (Across all zones)
+ * GET /api/slot-availability/admin/all?date=YYYY-MM-DD
  */
-router.post("/", async (req, res) => {
+router.get("/admin/all", auth, async (req, res) => {
   try {
-    const { zone_id, slot_id, date, max_orders, available_orders } = req.body;
-
-    if (!zone_id || !slot_id || !date || max_orders == null || available_orders == null) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
     }
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ error: "Date is required" });
 
-    const record = await SlotAvailability.create({
-      zone_id,
-      slot_id,
-      date: normalizeDate(date),
-      max_orders,
-      available_orders
-    });
+    const records = await SlotAvailability.find({
+      date: normalizeDate(date)
+    }).populate("slot_id").populate("zone_id");
 
-    res.status(201).json(record);
-  } catch {
-    res.status(500).json({ error: "Failed to create slot availability" });
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch admin slot records" });
   }
 });
 
 /**
+ * ADMIN: BULK UPDATE SLOT AVAILABILITY
+ * POST /api/slot-availability/bulk-update
+ */
+router.post("/bulk-update", auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    const { updates } = req.body; // Array of { zone_id, slot_id, date, max_orders, available_orders }
+
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({ error: "Updates array required" });
+    }
+
+    const promises = updates.map(update => {
+      const { zone_id, slot_id, date, max_orders, available_orders } = update;
+      return SlotAvailability.findOneAndUpdate(
+        { zone_id, slot_id, date: normalizeDate(date) },
+        { max_orders, available_orders },
+        { upsert: true, new: true }
+      );
+    });
+
+    await Promise.all(promises);
+    res.json({ message: "Bulk update successful" });
+  } catch (err) {
+    res.status(500).json({ error: "Bulk update failed: " + err.message });
+  }
+});
+
+/**
+ * USER: GET AVAILABLE SLOTS FOR ZONE + DATE
  * GET /api/slot-availability
  */
 router.get("/", async (req, res) => {
@@ -53,6 +83,29 @@ router.get("/", async (req, res) => {
     res.json(slots);
   } catch {
     res.status(500).json({ error: "Failed to fetch slots" });
+  }
+});
+
+/**
+ * ADMIN: SINGLE UPDATE (Backward compatibility)
+ * POST /api/slot-availability
+ */
+router.post("/", auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    const { zone_id, slot_id, date, max_orders, available_orders } = req.body;
+
+    const record = await SlotAvailability.findOneAndUpdate(
+      { zone_id, slot_id, date: normalizeDate(date) },
+      { max_orders, available_orders },
+      { upsert: true, new: true }
+    );
+
+    res.status(201).json(record);
+  } catch {
+    res.status(500).json({ error: "Failed to create slot availability" });
   }
 });
 

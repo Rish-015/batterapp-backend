@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Stock = require("../models/Stock");
 const Product = require("../models/Product");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -18,8 +19,11 @@ function normalizeDate(date) {
  * ---------------------------------------
  * POST /api/stock
  */
-router.post("/", async (req, res) => {
+router.post("/", auth, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const { product_id, date, available_quantity } = req.body;
 
     if (!product_id || !date || available_quantity == null) {
@@ -60,8 +64,11 @@ router.post("/", async (req, res) => {
  * ---------------------------------------
  * GET /api/stock/all
  */
-router.get("/all", async (req, res) => {
+router.get("/all", auth, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const stocks = await Stock.find()
       .populate("product_id", "name price weight is_active")
       .sort({ date: -1 });
@@ -134,8 +141,11 @@ router.get("/product/:productId", async (req, res) => {
  * ---------------------------------------
  * DELETE /api/stock/:id
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const stock = await Stock.findByIdAndDelete(req.params.id);
 
     if (!stock) {

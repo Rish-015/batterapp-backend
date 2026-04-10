@@ -8,21 +8,21 @@ const router = express.Router();
  */
 router.post("/", async (req, res) => {
   try {
-    const { name, polygon, isActive } = req.body;
+    const { name, pincodes, isActive } = req.body;
 
-    if (!name || !polygon) {
-      return res.status(400).json({ error: "name and polygon required" });
+    if (!name || !pincodes || !Array.isArray(pincodes)) {
+      return res.status(400).json({ error: "name and pincodes (array) required" });
     }
 
     const zone = await DeliveryZone.create({
       name,
-      polygon,
+      pincodes,
       isActive: isActive !== false
     });
 
     res.status(201).json(zone);
   } catch (err) {
-    res.status(500).json({ error: "Zone creation failed" });
+    res.status(500).json({ error: "Zone creation failed: " + err.message });
   }
 });
 
@@ -40,40 +40,26 @@ router.get("/", async (req, res) => {
 
 /**
  * POST /api/zones/detect
+ * Checks if a specific pincode is covered by any active zone
  */
 router.post("/detect", async (req, res) => {
   try {
-    const { lat, lng } = req.body;
+    const { pincode } = req.body;
 
-    if (!lat || !lng) {
-      return res.status(400).json({ error: "lat & lng required" });
+    if (!pincode) {
+      return res.status(400).json({ error: "pincode required" });
     }
 
+    // Find zone that contains this pincode in its array
     const zone = await DeliveryZone.findOne({
-      polygon: {
-        $geoIntersects: {
-          $geometry: {
-            type: "Point",
-            coordinates: [lng, lat]
-          }
-        }
-      }
+      pincodes: pincode,
+      isActive: true
     });
 
     if (!zone) {
       return res.json({
         zoneValid: false,
-        message: "Not delivering in this area"
-      });
-    }
-
-    if (!zone.isActive) {
-      return res.json({
-        zoneValid: true,
-        isActive: false,
-        zoneId: zone._id,
-        zoneName: zone.name,
-        message: "Zone closed"
+        message: "We don't deliver to this pincode yet."
       });
     }
 
@@ -82,11 +68,47 @@ router.post("/detect", async (req, res) => {
       isActive: true,
       zoneId: zone._id,
       zoneName: zone.name,
-      message: "Delivery available"
+      message: "Delivery available in your area!"
     });
 
   } catch (err) {
     res.status(500).json({ error: "Zone detection failed" });
+  }
+});
+
+/**
+ * PUT /api/zones/:id (ADMIN)
+ */
+router.put("/:id", async (req, res) => {
+  try {
+    const { name, pincodes, isActive } = req.body;
+    
+    if (pincodes && !Array.isArray(pincodes)) {
+      return res.status(400).json({ error: "pincodes must be an array" });
+    }
+
+    const zone = await DeliveryZone.findByIdAndUpdate(
+      req.params.id,
+      { name, pincodes, isActive },
+      { new: true }
+    );
+    if (!zone) return res.status(404).json({ error: "Zone not found" });
+    res.json(zone);
+  } catch (err) {
+    res.status(500).json({ error: "Zone update failed" });
+  }
+});
+
+/**
+ * DELETE /api/zones/:id (ADMIN)
+ */
+router.delete("/:id", async (req, res) => {
+  try {
+    const zone = await DeliveryZone.findByIdAndDelete(req.params.id);
+    if (!zone) return res.status(404).json({ error: "Zone not found" });
+    res.json({ message: "Zone deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Zone deletion failed" });
   }
 });
 

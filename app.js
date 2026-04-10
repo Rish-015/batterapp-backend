@@ -1,4 +1,9 @@
 require("dotenv").config();
+const dns = require("dns");
+
+// Force Node.js to use Google DNS to bypass ISP/Network blocks (ECONNREFUSED)
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 
 const express = require("express");
 const cors = require("cors");
@@ -17,7 +22,7 @@ app.use(express.json());
    DATABASE CONNECTION
 ======================= */
 connectDB().then(() => {
-  startSlotResetCron();
+   startSlotResetCron();
 });
 
 /* =======================
@@ -58,8 +63,8 @@ app.get("/", (req, res) => {
    ERROR HANDLING
 ======================= */
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Something broke!" });
+   console.error(err.stack);
+   res.status(500).json({ error: "Something broke!" });
 });
 
 /* =======================
@@ -67,5 +72,5 @@ app.use((err, req, res, next) => {
 ======================= */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+   console.log(`🚀 Server running on port ${PORT}`);
 });

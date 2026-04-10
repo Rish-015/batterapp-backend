@@ -22,7 +22,7 @@ router.post("/", async (req, res) => {
     }
 
     const zone = await DeliveryZone.findById(zone_id);
-    if (!zone || !zone.is_active) {
+    if (!zone || !zone.isActive) {
       return res.status(400).json({ error: "Zone not found or inactive" });
     }
 
@@ -215,7 +215,7 @@ router.put("/:partnerId", async (req, res) => {
       }
 
       const zone = await DeliveryZone.findById(zone_id);
-      if (!zone || !zone.is_active) {
+      if (!zone || !zone.isActive) {
         return res.status(400).json({ error: "Zone not found or inactive" });
       }
 

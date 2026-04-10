@@ -7,11 +7,92 @@ const DeliveryZone = require("../models/DeliveryZone");
 const DeliverySlot = require("../models/DeliverySlot");
 const Product = require("../models/Product");
 const User = require("../models/User");
+const DeliveryPartner = require("../models/DeliveryPartner");
 const router = express.Router();
 
 function normalizeDate(date) {
   return new Date(date).toISOString().split("T")[0];
 }
+
+/**
+ * GET ALL ORDERS (ADMIN)
+ */
+router.get("/admin/all", auth, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const { status, zoneId, date } = req.query;
+    const filter = {};
+    if (status && status !== 'ALL') filter.status = status;
+    if (zoneId) filter.zone_id = zoneId;
+    if (date) filter.delivery_date = normalizeDate(date);
+
+    const orders = await Order.find(filter)
+      .populate("user_id", "name phone email")
+      .populate("zone_id", "name")
+      .populate("delivery_partner_id", "name phone")
+      .sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch orders" });
+  }
+});
+
+/**
+ * UPDATE ORDER STATUS (ADMIN)
+ */
+router.patch("/:id/status", auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const { status } = req.body;
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status: status.toUpperCase() },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ error: "Status update failed" });
+  }
+});
+
+/**
+ * ASSIGN DELIVERY PARTNER (ADMIN)
+ */
+router.patch("/:id/assign", auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const { partnerId } = req.body;
+    const partner = await DeliveryPartner.findById(partnerId);
+    if (!partner) return res.status(404).json({ error: "Partner not found" });
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { 
+        delivery_partner_id: partnerId,
+        status: 'SHIPPED' // Automatically mark as shipped when assigned
+      },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).json({ error: "Order not found" });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ error: "Partner assignment failed" });
+  }
+});
 
 /**
  * POST /api/orders

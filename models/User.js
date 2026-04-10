@@ -12,6 +12,12 @@ const userSchema = new mongoose.Schema({
   name: { type: String },
   phone: { type: String, required: true, unique: true },
   email: { type: String },
+  password: { type: String }, // For admin login
+  role: { 
+    type: String, 
+    enum: ['admin', 'customer', 'partner'], 
+    default: 'customer' 
+  },
   addresses: [addressSchema]
 }, { timestamps: true });
 

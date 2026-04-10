@@ -14,9 +14,9 @@ POST http://localhost:5000/api/users
 Content-Type: application/json
 
 {
-  "name": "Bala",
-  "phone": "9876583410",
-  "email": "bala@gmail.com",
+  "name": "Risheeth",
+  "phone": "6383781029",
+  "email": "risheeth@gmail.com",
   "address_text": "Chennai"
 }
 
@@ -24,6 +24,9 @@ Content-Type: application/json
 
 ### Get All Users
 GET http://localhost:5000/api/users
+
+### Get All Users (ADMIN)
+GET http://localhost:5000/api/users/admin/all 
 
 
 
@@ -205,7 +208,7 @@ GET http://localhost:5000/api/orders/user/6981f6a60e315ef28c91cbc4
 ###
 
 ### Update Order Status to CONFIRMED (ADMIN)
-PUT http://localhost:5000/api/orders/697f87cbceff41c1ad7c2c99/status
+PATCH http://localhost:5000/api/orders/697f87cbceff41c1ad7c2c99/status
 Content-Type: application/json
 
 {
@@ -215,17 +218,17 @@ Content-Type: application/json
 ###
 
 ### Assign Delivery Partner to Order (ADMIN)
-PUT http://localhost:5000/api/orders/6981fca0bf1f68ba2aeaba29/assign-partner
+PATCH http://localhost:5000/api/orders/6981fca0bf1f68ba2aeaba29/assign
 Content-Type: application/json
 
 {
-  "delivery_partner_id": "6999c873a0e39e16eacf7e0d"
+  "partnerId": "6999c873a0e39e16eacf7e0d"
 }
 
 ###
 
 ### Update Order Status to OUT_FOR_DELIVERY (ADMIN)
-PUT http://localhost:5000/api/orders/67ba1234567890abcdef5678/status
+PATCH http://localhost:5000/api/orders/67ba1234567890abcdef5678/status
 Content-Type: application/json
 
 {
@@ -235,7 +238,7 @@ Content-Type: application/json
 ###
 
 ### Update Order Status to DELIVERED (ADMIN) - Releases delivery partner
-PUT http://localhost:5000/api/orders/67ba1234567890abcdef5678/status
+PATCH http://localhost:5000/api/orders/67ba1234567890abcdef5678/status
 Content-Type: application/json
 
 {
@@ -245,7 +248,7 @@ Content-Type: application/json
 ###
 
 ### Cancel Order (ADMIN) - Releases delivery partner if assigned
-PUT http://localhost:5000/api/orders/67ba1234567890abcdef5678/status
+PATCH http://localhost:5000/api/orders/67ba1234567890abcdef5678/status
 Content-Type: application/json
 
 {

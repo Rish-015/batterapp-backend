@@ -7,6 +7,56 @@ router.get("/test", (req, res) => {
   res.send("USER ROUTES WORKING");
 });
 
+/**
+ * =======================================
+ * CREATE NEW USER
+ * =======================================
+ * POST /api/users
+ */
+router.post("/", async (req, res) => {
+  try {
+    const { name, phone, email, address_text } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    let user = await User.findOne({ phone });
+    if (user) {
+      return res.status(400).json({ error: "User with this phone already exists" });
+    }
+
+    const addresses = address_text ? [{ address_text, is_default: true }] : [];
+
+    user = new User({
+      name,
+      phone,
+      email,
+      addresses
+    });
+
+    await user.save();
+    res.status(201).json(user);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create user", details: err.message });
+  }
+});
+
+/**
+ * =======================================
+ * GET ALL USERS
+ * =======================================
+ * GET /api/users
+ */
+router.get("/", async (req, res) => {
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch users", details: err.message });
+  }
+});
+
 
 /**
  * =======================================
@@ -135,6 +185,21 @@ router.delete("/me/address/:addressId", auth, async (req, res) => {
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: "Failed to delete address" });
+  }
+});
+
+/**
+ * =======================================
+ * GET ALL USERS (ADMIN)
+ * =======================================
+ * GET /api/users/admin/all
+ */
+router.get("/admin/all", async (req, res) => {
+  try {
+    const users = await User.find({ role: 'customer' }).sort({ createdAt: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch users" });
   }
 });
 

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Product = require("../models/Product");
+const auth = require("../middleware/auth");
 const upload = require("../middleware/upload"); // multer + cloudinary
 
 /**
@@ -40,8 +41,11 @@ router.get("/:id", async (req, res) => {
 /**
  * CREATE PRODUCT (ADMIN) — WITH IMAGE
  */
-router.post("/", upload.single("image"), async (req, res) => {
+router.post("/", auth, upload.single("image"), async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const { name, price, weight } = req.body;
 
     if (!name || !price || !weight) {
@@ -80,8 +84,11 @@ router.post("/", upload.single("image"), async (req, res) => {
  */
 const cloudinary = require("../config/cloudinary");
 
-router.put("/:id", upload.single("image"), async (req, res) => {
+router.put("/:id", auth, upload.single("image"), async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
@@ -112,15 +119,24 @@ router.put("/:id", upload.single("image"), async (req, res) => {
 
 /** DELETE PRODUCT (ADMIN)
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    // Delete image from Cloudinary
-    await cloudinary.uploader.destroy(product.image_public_id);
+    // Delete image from Cloudinary (with safety check)
+    if (product.image_public_id) {
+       try {
+         await cloudinary.uploader.destroy(product.image_public_id);
+       } catch (err) {
+         console.warn("Cloudinary deletion failed, proceeding with DB deletion:", err.message);
+       }
+    }
 
     // Delete product from DB
     await product.deleteOne();
@@ -136,8 +152,11 @@ router.delete("/:id", async (req, res) => {
 /**
  * DISABLE PRODUCT (ADMIN)
  */
-router.patch("/:id/disable", async (req, res) => {
+router.patch("/:id/disable", auth, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     await Product.findByIdAndUpdate(req.params.id, { is_active: false });
     res.json({ message: "Product disabled" });
   } catch (err) {
@@ -148,8 +167,11 @@ router.patch("/:id/disable", async (req, res) => {
 /**
  * ENABLE PRODUCT (ADMIN)
  */
-router.patch("/:id/enable", async (req, res) => {
+router.patch("/:id/enable", auth, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     await Product.findByIdAndUpdate(req.params.id, { is_active: true });
     res.json({ message: "Product enabled" });
   } catch (err) {
@@ -160,8 +182,11 @@ router.patch("/:id/enable", async (req, res) => {
 /**
  * ADMIN – GET ALL PRODUCTS
  */
-router.get("/admin/all", async (req, res) => {
+router.get("/admin/all", auth, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
     const products = await Product.find()
       .sort({ created_at: -1 });
 
