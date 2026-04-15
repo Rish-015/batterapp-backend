@@ -37,6 +37,7 @@ app.use("/api/slots", require("./routes/slots.routes"));
 app.use("/api/slot-availability", require("./routes/slotAvailability.routes"));
 app.use("/api/zones", require("./routes/zones.routes"));
 app.use("/api/delivery-partners", require("./routes/deliveryPartner.routes"));
+app.use("/api/admin", require("./routes/admin.routes"));
 
 /* =======================
    HEALTH CHECK

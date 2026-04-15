@@ -9,7 +9,10 @@ const slotAvailabilitySchema = new mongoose.Schema(
     },
     slot_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "DeliverySlot",
+      required: false // Set to false to support nested slots without master IDs
+    },
+    slot_name: {
+      type: String,
       required: true
     },
     date: {

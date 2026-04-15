@@ -46,10 +46,10 @@ router.post("/bulk-update", auth, async (req, res) => {
     }
 
     const promises = updates.map(update => {
-      const { zone_id, slot_id, date, max_orders, available_orders } = update;
+      const { zone_id, slot_id, slot_name, date, max_orders, available_orders } = update;
       return SlotAvailability.findOneAndUpdate(
-        { zone_id, slot_id, date: normalizeDate(date) },
-        { max_orders, available_orders },
+        { zone_id, slot_name, date: normalizeDate(date) },
+        { slot_id, max_orders, available_orders },
         { upsert: true, new: true }
       );
     });

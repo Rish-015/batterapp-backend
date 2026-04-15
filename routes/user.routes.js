@@ -194,12 +194,89 @@ router.delete("/me/address/:addressId", auth, async (req, res) => {
  * =======================================
  * GET /api/users/admin/all
  */
-router.get("/admin/all", async (req, res) => {
+router.get("/admin/all", auth, async (req, res) => {
   try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
     const users = await User.find({ role: 'customer' }).sort({ createdAt: -1 });
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+/**
+ * GET DETAILED CUSTOMERS LIST (ADMIN)
+ */
+const mongoose = require("mongoose");
+router.get("/admin/customers-list", auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+
+    const customers = await User.aggregate([
+      { $match: { role: 'customer' } },
+      {
+        $lookup: {
+          from: 'orders',
+          localField: '_id',
+          foreignField: 'user_id',
+          as: 'orders'
+        }
+      },
+      {
+        $addFields: {
+          orderCount: { $size: '$orders' },
+          latestOrder: { $arrayElemAt: [{ $sortArray: { input: '$orders', sortBy: { createdAt: -1 } } }, 0] }
+        }
+      },
+      {
+        $lookup: {
+          from: 'deliveryzones',
+          localField: 'latestOrder.zone_id',
+          foreignField: '_id',
+          as: 'zone'
+        }
+      },
+      {
+        $addFields: {
+          zoneName: { $ifNull: [{ $arrayElemAt: ['$zone.name', 0] }, 'Unassigned'] }
+        }
+      },
+      {
+        $project: {
+          orders: 0,
+          latestOrder: 0,
+          zone: 0,
+          password: 0
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]);
+
+    res.json(customers);
+  } catch (err) {
+    console.error("Aggregation Error:", err);
+    res.status(500).json({ error: "Failed to aggregate customers list" });
+  }
+});
+
+/**
+ * TOGGLE USER STATUS (ADMIN)
+ */
+router.patch("/admin/:id/status", auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Access denied" });
+
+    const { is_active } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { is_active },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: "Status update failed" });
   }
 });
 

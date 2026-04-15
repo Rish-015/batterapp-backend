@@ -51,24 +51,69 @@ router.get("/", async (req, res) => {
   try {
     const { available, active, zone_id } = req.query;
 
-    const filters = {};
-    if (available === "true" || available === "false") {
-      filters.is_available = available === "true";
-    }
-    if (active === "true" || active === "false") {
-      filters.is_active = active === "true";
-    }
-    if (zone_id) {
-      if (!isValidObjectId(zone_id)) {
-        return res.status(400).json({ error: "Invalid zone_id" });
-      }
-      filters.zone_id = zone_id;
-    }
+    const pipeline = [];
 
-    const partners = await DeliveryPartner.find(filters)
-      .populate("zone_id", "name")
-      .sort({ createdAt: -1 });
-    res.json(partners);
+    // 1. Initial Match for filters (is_available, is_active, zone_id)
+    const match = {};
+    if (available === "true" || available === "false") match.is_available = available === "true";
+    if (active === "true" || active === "false") match.is_active = active === "true";
+    if (zone_id && isValidObjectId(zone_id)) match.zone_id = new mongoose.Types.ObjectId(zone_id);
+    
+    pipeline.push({ $match: match });
+
+    // 2. Lookup Orders for stats
+    pipeline.push({
+      $lookup: {
+        from: "orders",
+        localField: "_id",
+        foreignField: "delivery_partner_id",
+        as: "partner_orders"
+      }
+    });
+
+    // 3. Add statistical fields
+    pipeline.push({
+      $addFields: {
+        totalDeliveries: {
+          $size: {
+            $filter: {
+              input: "$partner_orders",
+              as: "o",
+              cond: { $eq: ["$$o.status", "DELIVERED"] }
+            }
+          }
+        },
+        isAtDelivery: {
+          $gt: [
+            {
+              $size: {
+                $filter: {
+                  input: "$partner_orders",
+                  as: "o",
+                  cond: { 
+                    $in: ["$$o.status", ["SHIPPED", "OUT_FOR_DELIVERY"]] 
+                  }
+                }
+              }
+            },
+            0
+          ]
+        }
+      }
+    });
+
+    // 4. Cleanup and Populate equivalent
+    pipeline.push({ $project: { partner_orders: 0 } });
+    
+    // Sort
+    pipeline.push({ $sort: { createdAt: -1 } });
+
+    let results = await DeliveryPartner.aggregate(pipeline);
+    
+    // Manually populate zone_id since aggregate doesn't do it automatically like .find().populate()
+    results = await DeliveryPartner.populate(results, { path: "zone_id", select: "name" });
+
+    res.json(results);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

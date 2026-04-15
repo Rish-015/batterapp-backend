@@ -43,6 +43,101 @@ router.get("/admin/all", auth, async (req, res) => {
 });
 
 /**
+ * GET PRODUCTION SUMMARY (ADMIN)
+ * Returns zone-wise breakdown of orders and product quantities for a date
+ */
+router.get("/admin/production-summary", auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ error: "Date is required" });
+
+    const summary = await Order.aggregate([
+      { 
+        $match: { 
+          delivery_date: date, 
+          status: { $ne: 'CANCELLED' } 
+        } 
+      },
+      {
+        $group: {
+          _id: "$zone_id",
+          ordersCount: { $sum: 1 },
+          items: { $push: "$items" }
+        }
+      }
+    ]);
+
+    // Populate zone names
+    const populatedSummary = await DeliveryZone.populate(summary, {
+      path: "_id",
+      select: "name"
+    });
+
+    // Format output: { zoneId: { name, ordersCount, products: { productId: quantity } } }
+    const result = populatedSummary.reduce((acc, curr) => {
+      const zoneId = curr._id?._id || curr._id;
+      const zoneName = curr._id?.name || "Unknown";
+      
+      const productMap = {};
+      curr.items.flat().forEach(item => {
+        productMap[item.product_id] = (productMap[item.product_id] || 0) + item.quantity;
+      });
+
+      acc[zoneId] = {
+        name: zoneName,
+        ordersCount: curr.ordersCount,
+        products: productMap
+      };
+      return acc;
+    }, {});
+
+    res.json(result);
+  } catch (err) {
+    console.error("Production Summary Error:", err);
+    res.status(500).json({ error: "Failed to generate production summary" });
+  }
+});
+
+/**
+ * GET PAYMENT SUMMARY (ADMIN)
+ */
+router.get("/admin/payment-summary", auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ error: "Date is required" });
+
+    const orders = await Order.find({ 
+      delivery_date: normalizeDate(date), 
+      status: { $ne: 'CANCELLED' } 
+    })
+    .select("_id delivery_date payment_method total_price status createdAt")
+    .sort({ createdAt: -1 });
+
+    const stats = orders.reduce((acc, order) => {
+      acc.totalRevenue += order.total_price;
+      if (order.payment_method === 'COD') {
+        acc.codTotal += order.total_price;
+      } else {
+        acc.onlineTotal += order.total_price;
+      }
+      return acc;
+    }, { totalRevenue: 0, onlineTotal: 0, codTotal: 0 });
+
+    res.json({ orders, stats });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch payment summary" });
+  }
+});
+
+/**
  * UPDATE ORDER STATUS (ADMIN)
  */
 router.patch("/:id/status", auth, async (req, res) => {

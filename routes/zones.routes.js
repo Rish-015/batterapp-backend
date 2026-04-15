@@ -8,7 +8,7 @@ const router = express.Router();
  */
 router.post("/", async (req, res) => {
   try {
-    const { name, pincodes, isActive } = req.body;
+    const { name, pincodes, isActive, slots, pricing } = req.body;
 
     if (!name || !pincodes || !Array.isArray(pincodes)) {
       return res.status(400).json({ error: "name and pincodes (array) required" });
@@ -17,7 +17,9 @@ router.post("/", async (req, res) => {
     const zone = await DeliveryZone.create({
       name,
       pincodes,
-      isActive: isActive !== false
+      isActive: isActive !== false,
+      slots,
+      pricing
     });
 
     res.status(201).json(zone);
@@ -31,7 +33,9 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const zones = await DeliveryZone.find().sort({ name: 1 });
+    const zones = await DeliveryZone.find()
+      .populate('pricing.productPrices.productId')
+      .sort({ name: 1 });
     res.json(zones);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch zones" });
@@ -54,7 +58,7 @@ router.post("/detect", async (req, res) => {
     const zone = await DeliveryZone.findOne({
       pincodes: pincode,
       isActive: true
-    });
+    }).populate('pricing.productPrices.productId');
 
     if (!zone) {
       return res.json({
@@ -68,6 +72,7 @@ router.post("/detect", async (req, res) => {
       isActive: true,
       zoneId: zone._id,
       zoneName: zone.name,
+      pricing: zone.pricing,
       message: "Delivery available in your area!"
     });
 
@@ -81,7 +86,7 @@ router.post("/detect", async (req, res) => {
  */
 router.put("/:id", async (req, res) => {
   try {
-    const { name, pincodes, isActive } = req.body;
+    const { name, pincodes, isActive, slots, pricing } = req.body;
     
     if (pincodes && !Array.isArray(pincodes)) {
       return res.status(400).json({ error: "pincodes must be an array" });
@@ -89,9 +94,10 @@ router.put("/:id", async (req, res) => {
 
     const zone = await DeliveryZone.findByIdAndUpdate(
       req.params.id,
-      { name, pincodes, isActive },
+      { name, pincodes, isActive, slots, pricing },
       { new: true }
-    );
+    ).populate('pricing.productPrices.productId');
+
     if (!zone) return res.status(404).json({ error: "Zone not found" });
     res.json(zone);
   } catch (err) {
