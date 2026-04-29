@@ -18,10 +18,10 @@ const startSlotResetCron = require("./cron/slotResetCron");
 const app = express();
 
 // =======================
-// CORS CONFIG (IMPORTANT)
+// CORS CONFIG
 // =======================
 const corsOptions = {
-  origin: "*", // allow all (for development)
+  origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
@@ -36,9 +36,14 @@ app.use(express.json());
 // =======================
 // DATABASE CONNECTION
 // =======================
-connectDB().then(() => {
-  startSlotResetCron();
-});
+connectDB()
+  .then(() => {
+    console.log("✅ MongoDB connected");
+    startSlotResetCron();
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection failed:", err);
+  });
 
 // =======================
 // ROUTES
@@ -77,7 +82,7 @@ app.use((err, req, res, next) => {
 // =======================
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
 
